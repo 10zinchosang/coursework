@@ -35,6 +35,11 @@ head(ratings) %>% kable()
 
 ```{r dist-ratings}
 # plot the distribution of rating values https://speakerdeck.com/jhofman/modeling-social-data-lecture-2-introduction-to-counting?slide=26
+
+ratings %>%
+  ggplot(aes(x=rating)) +
+  geom_histogram()
+
 ```
 
 ## Per-movie stats
@@ -42,24 +47,62 @@ head(ratings) %>% kable()
 ```{r aggregate-by-movie}
 # aggregate ratings by movie, computing mean rating and number of ratings
 # hint: use the n() function for easy counting within a group
+ratings_by_movies <- ratings %>%
+  group_by(movie_id) %>%
+  summarize(count = n(), avg =mean(rating))
+
+ratings_by_movies
+
 ```
 
 ```{r dist-movie-popularity}
 # plot distribution of movie popularity (= number of ratings the movie received)
 # hint: try scale_x_log10() for a logarithmic x axis
+ratings %>%
+  group_by(movie_id) %>%
+  summarize(count=n()) %>%
+  ggplot(aes(x=count)) +
+  geom_histogram(bins = 30) +
+  scale_x_log10()
+
 ```
 
 ```{r dist-mean-ratings-by-movie}
 # plot distribution of mean ratings by movie https://speakerdeck.com/jhofman/modeling-social-data-lecture-2-introduction-to-counting?slide=28
 # hint: try geom_histogram and geom_density
+ratings %>%
+  group_by(movie_id) %>%
+  summarize(avg=mean(rating)) %>%
+  ggplot(aes(x=avg)) +
+  geom_histogram(bins = 30)
+
 ```
 
 ```{r cdf-movie-pop}
 # rank movies by popularity (number of ratings) and compute the cdf, or fraction of all views covered by the top-k movies https://speakerdeck.com/jhofman/modeling-social-data-lecture-2-introduction-to-counting?slide=30
 # hint: use dplyr's rank and arrange functions, and the base R sum and cumsum functions
 # store the result in a new data frame so you can use it in creating figure 2 from the paper below
+ratings_by_movies <- ratings %>%
+  group_by(movie_id) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count)) %>%
+  mutate(rank=rank(desc(count)))%>%
+  mutate(csum=cumsum(count)) %>%
+  mutate(cdf=csum/nrow(ratings))
+
+ratings_by_movies
+
 
 # plot the CDF of movie popularity
+ratings %>%
+  group_by(movie_id) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count)) %>%
+  mutate(rank=rank(desc(count)))%>%
+  mutate(csum=cumsum(count)) %>%
+  mutate(cdf=csum/nrow(ratings)) %>%
+  ggplot(aes(x=rank,y=cdf)) +
+  geom_line()
 ```
 
 
@@ -67,11 +110,25 @@ head(ratings) %>% kable()
 
 ```{r aggregate-by-user}
 # aggregate ratings by user, computing mean and number of ratings
+
+ratings_by_user <- ratings %>%
+  group_by(user_id) %>%
+  summarize(count=n(),avg=mean(rating))
+
+ratings_by_user
+
 ```
 
 ```{r dist-user-activity}
 # plot distribution of user activity (= number of ratings the user made)
 # hint: try a log scale here
+ratings %>%
+  group_by(user_id) %>%
+  summarize(count=n()) %>%
+  ggplot(aes(x=count)) +
+  geom_histogram() +
+  scale_x_log10()
+
 ```
 
 # Anatomy of the long tail
@@ -81,6 +138,47 @@ head(ratings) %>% kable()
 # note: don't worry about the "null model" lines
 # just do the solid lines and dotted line (optional)
 # https://5harad.com/papers/long_tail.pdf
+
+print(ratings_by_user)
+
+print(ratings_by_movies)
+
+final <- left_join(ratings_by_user,ratings, by="user_id")
+
+final <- left_join(final,ratings_by_movies, by="movie_id")
+
+final <- final %>% select('user_id','rank')
+
+print(final)
+
+final <- final %>%
+  arrange(user_id,rank) %>%
+  group_by(rank) %>%
+  count(rank) %>%
+  arrange(rank)
+
+final %>%
+  arrange
+
+# then do cumulative 
+
+
+final
+
+final %>%
+  count(rank)
+
+
+final
+
+
+final %>%
+  group_by(user_id) %>%
+  summarize(count = sum(rank<=1)/n())
+
+count = sum (var2 == 'val'))
+
+
 
 # Specifically, for the subset of users who rated at least 10 movies,
 # produce a plot that shows the fraction of users satisfied (vertical
